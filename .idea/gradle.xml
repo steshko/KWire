@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -10,6 +11,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/compiler-plugin" />
             <option value="$PROJECT_DIR$/gradle-plugin" />
+            <option value="$PROJECT_DIR$/library" />
           </set>
         </option>
       </GradleProjectSettings>
@@ -22,6 +24,7 @@
                   <project path="$PROJECT_DIR$" />
                   <project path="$PROJECT_DIR$/compiler-plugin" />
                   <project path="$PROJECT_DIR$/gradle-plugin" />
+                  <project path="$PROJECT_DIR$/library" />
                 </projects>
               </build>
             </builds>
@@ -33,6 +36,7 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/compiler-plugin" />
             <option value="$PROJECT_DIR$/gradle-plugin" />
+            <option value="$PROJECT_DIR$/library" />
             <option value="$PROJECT_DIR$/sample" />
           </set>
         </option>

@@ -14,6 +14,7 @@ buildConfig {
 
     packageName(group.toString())
     buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_ID", "\"${rootProject.group}\"")
+    buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_GROUP", "\"${project.group}\"")
 }
 
 kotlin {

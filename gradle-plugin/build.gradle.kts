@@ -18,6 +18,13 @@ buildConfig {
     buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_GROUP", "\"${compilerPluginProject.group}\"")
     buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_NAME", "\"${compilerPluginProject.name}\"")
     buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_VERSION", "\"${compilerPluginProject.version}\"")
+
+    val pluginLibraryProject = project(":library")
+    buildConfigField(
+        type = "String",
+        name = "PLUGIN_LIBRARY_COORDINATES",
+        expression = "\"${pluginLibraryProject.group}:${pluginLibraryProject.name}:${pluginLibraryProject.version}\""
+    )
 }
 
 gradlePlugin {

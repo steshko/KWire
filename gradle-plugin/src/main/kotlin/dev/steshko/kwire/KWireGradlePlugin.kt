@@ -12,10 +12,18 @@ open class KWireGradlePlugin : KotlinCompilerPluginSupportPlugin {
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val project = kotlinCompilation.target.project
 
+
+        kotlinCompilation.dependencies {
+            implementation(BuildConfig.PLUGIN_LIBRARY_COORDINATES)
+        }
+
         return project.provider {
             val extension = project.extensions.getByType(KWireGradleExtension::class.java)
+            val beanList = extension.beans.get()
 
-            emptyList()
+            listOf(
+                SubpluginOption(key = KWireCommandLineProcessor.BEANS_OPTION, value = beanList.joinToString(","))
+            )
         }
     }
 
