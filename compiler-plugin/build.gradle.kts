@@ -1,0 +1,23 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.buildconfig)
+}
+
+dependencies {
+    compileOnly(libs.kotlin.compiler.embeddable)
+}
+
+buildConfig {
+    useKotlinOutput {
+        internalVisibility = true
+    }
+
+    packageName(group.toString())
+    buildConfigField("String", "KOTLIN_COMPILER_PLUGIN_ID", "\"${rootProject.group}\"")
+}
+
+kotlin {
+    compilerOptions {
+        optIn.add("org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi")
+    }
+}
