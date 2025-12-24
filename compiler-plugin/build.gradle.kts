@@ -1,10 +1,12 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.buildconfig)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 dependencies {
     compileOnly(libs.kotlin.compiler.embeddable)
+    implementation(libs.kotlinx.serialization.json)
 }
 
 buildConfig {

@@ -1,17 +1,20 @@
 package dev.steshko.kwire
 
+import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
 import org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
+import java.nio.charset.Charset
+import kotlin.io.encoding.Base64
 
 @Suppress("unused")
 class KWireCommandLineProcessor : CommandLineProcessor {
 
     companion object {
         const val BEANS_OPTION = "beans"
-        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<List<String>>("registered beans")
+        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<List<BeanConfig>>("registered beans")
     }
 
     override val pluginId: String = BuildConfig.KOTLIN_COMPILER_PLUGIN_ID
@@ -29,7 +32,7 @@ class KWireCommandLineProcessor : CommandLineProcessor {
         when (option.optionName) {
             BEANS_OPTION -> configuration.put(
                 BEANS_CONFIGURATION_KEY,
-                value.split(',').map(String::trim).filter(String::isNotEmpty)
+                Json.decodeFromString<List<BeanConfig>>(Base64.decode(value).toString(Charset.defaultCharset()))
             )
             else -> error("Unexpected config option: '${option.optionName}'")
         }
