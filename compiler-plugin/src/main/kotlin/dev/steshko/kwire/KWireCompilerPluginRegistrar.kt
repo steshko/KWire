@@ -15,7 +15,8 @@ class KWireCompilerPluginRegistrar: CompilerPluginRegistrar() {
     override val supportsK2 = true
 
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
-        val beans = configuration.get(KWireCommandLineProcessor.BEANS_CONFIGURATION_KEY, emptyList())
+        val globalBeanConfig = configuration.get(KWireCommandLineProcessor.BEANS_CONFIGURATION_KEY, GlobalBeanConfig(mutableListOf()))
+        val beans = globalBeanConfig.beans
 
         FirExtensionRegistrarAdapter.registerExtension(object : FirExtensionRegistrar() {
             override fun ExtensionRegistrarContext.configurePlugin() {

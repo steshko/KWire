@@ -14,7 +14,7 @@ class KWireCommandLineProcessor : CommandLineProcessor {
 
     companion object {
         const val BEANS_OPTION = "beans"
-        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<List<BeanConfig>>("registered beans")
+        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<GlobalBeanConfig>("registered beans")
     }
 
     override val pluginId: String = BuildConfig.KOTLIN_COMPILER_PLUGIN_ID
@@ -32,7 +32,7 @@ class KWireCommandLineProcessor : CommandLineProcessor {
         when (option.optionName) {
             BEANS_OPTION -> configuration.put(
                 BEANS_CONFIGURATION_KEY,
-                Json.decodeFromString<List<BeanConfig>>(Base64.decode(value).toString(Charset.defaultCharset()))
+                Json.decodeFromString<GlobalBeanConfig>(Base64.decode(value).toString(Charset.defaultCharset()))
             )
             else -> error("Unexpected config option: '${option.optionName}'")
         }

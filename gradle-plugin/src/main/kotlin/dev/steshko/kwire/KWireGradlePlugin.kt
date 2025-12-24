@@ -25,8 +25,9 @@ open class KWireGradlePlugin : KotlinCompilerPluginSupportPlugin {
             val extension = project.extensions.getByType(KWireGradleExtension::class.java)
             val beanList = extension.beans.get()
 
+            val globalBeanConfig = GlobalBeanConfig(beanList)
             listOf(
-                SubpluginOption(key = KWireCommandLineProcessor.BEANS_OPTION, value = Base64.encode(Json.encodeToString(beanList).toByteArray()))
+                SubpluginOption(key = KWireCommandLineProcessor.BEANS_OPTION, value = Base64.encode(Json.encodeToString(globalBeanConfig).toByteArray()))
             )
         }
     }

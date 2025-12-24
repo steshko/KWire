@@ -15,6 +15,6 @@ open class KWireGradleExtension @Inject constructor(
      * Usage: bean("com.example.MyService")
      */
     fun bean(fqName: String, name: String = fqName.fqnToPropName()) {
-        beans.add(BeanConfig(fqName, name))
+        beans.add(BeanConfig(fqName, name, BeanSource.GRADLE_PLUGIN))
     }
 }
