@@ -6,6 +6,7 @@ plugins {
 
 dependencies {
     compileOnly(libs.kotlin.compiler.embeddable)
+    implementation(project(":library"))
     implementation(libs.kotlinx.serialization.json)
 }
 
