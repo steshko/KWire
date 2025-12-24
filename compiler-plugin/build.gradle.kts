@@ -20,5 +20,6 @@ buildConfig {
 kotlin {
     compilerOptions {
         optIn.add("org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi")
+        freeCompilerArgs.add("-Xcontext-parameters")
     }
 }

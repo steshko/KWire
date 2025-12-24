@@ -1,5 +1,6 @@
 package dev.steshko.kwire
 
+import dev.steshko.kwire.fir.KWireAdditionalCheckerExtension
 import dev.steshko.kwire.fir.KWireManagerFirGenerator
 import dev.steshko.kwire.ir.KWireManagerIrGenerator
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -19,6 +20,7 @@ class KWireCompilerPluginRegistrar: CompilerPluginRegistrar() {
         FirExtensionRegistrarAdapter.registerExtension(object : FirExtensionRegistrar() {
             override fun ExtensionRegistrarContext.configurePlugin() {
                 +{ session: FirSession -> KWireManagerFirGenerator(session, beans) }
+                +{ session: FirSession -> KWireAdditionalCheckerExtension(session, beans) }
             }
         })
 
