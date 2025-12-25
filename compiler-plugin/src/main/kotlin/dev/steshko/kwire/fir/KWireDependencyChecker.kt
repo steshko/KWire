@@ -1,11 +1,7 @@
 package dev.steshko.kwire.fir
 
 import dev.steshko.kwire.BeanSource
-import dev.steshko.kwire.Inject
-import dev.steshko.kwire.Named
-import dev.steshko.kwire.beans.BeanConfigCompiler
-import dev.steshko.kwire.beans.BeanDependency
-import dev.steshko.kwire.util.getAnnotationFieldValue
+import dev.steshko.kwire.beans.BeanConfigInternal
 import dev.steshko.kwire.util.getClassSymbolFromFqn
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector
@@ -14,17 +10,12 @@ import org.jetbrains.kotlin.fir.analysis.checkers.config.FirLanguageVersionSetti
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
-import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 
 class KWireDependencyChecker(
     private val session: FirSession,
-    private val beans: List<BeanConfigCompiler>
+    private val beans: List<BeanConfigInternal>
 ) : FirLanguageVersionSettingsChecker() {
     @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
     override fun check(
@@ -32,8 +23,10 @@ class KWireDependencyChecker(
         reporter: BaseDiagnosticsCollector.RawReporter
     ) {
 
-        // Check that beans have unique names
-        beans.groupBy {
+        // Check that gradle plugin defined beans have unique names
+        beans.filter {
+            it.source == BeanSource.GRADLE_PLUGIN
+        }.groupBy {
             it.name
         }.filter {
             it.value.size > 1
@@ -48,7 +41,7 @@ class KWireDependencyChecker(
 
         // Check for beans that don't exist
         beans.filter {
-            context.session.getClassSymbolFromFqn(it.fqName) == null
+            it.source == BeanSource.GRADLE_PLUGIN && context.session.getClassSymbolFromFqn(it.fqName) == null
         }.takeIf {
             it.isNotEmpty()
         }?.run {
@@ -60,17 +53,12 @@ class KWireDependencyChecker(
 
         // Check for no arg or @Inject constructors
         val gradlePluginBeansErrors = mutableListOf<String>()
-        beans.forEach { bean ->
+        beans.filter {
+            !it.foundMatchingConstructor
+        }.forEach { bean ->
             val classSymbol: FirClassLikeSymbol<*> = context.session.getClassSymbolFromFqn(bean.fqName) ?: return@forEach
-            //val constructors = classSymbol.getContainingDeclaration()
-            val constructorDeclarations = (classSymbol.fir as FirClass).declarations.filter { declaration ->
-                declaration is FirConstructor
-            } as List<FirConstructor>
-            val toUseConstructor = constructorDeclarations.find {
-                it.getAnnotationByClassId(ClassId.topLevel(FqName(Inject::class.qualifiedName!!)), session) != null
-            } ?: constructorDeclarations.find {
-                it.valueParameters.isEmpty()
-            }
+
+            val toUseConstructor = getToUseConstructor(classSymbol.fir as FirClass, session)
 
             if (toUseConstructor == null) {
                 if (bean.source == BeanSource.GRADLE_PLUGIN)
@@ -78,52 +66,25 @@ class KWireDependencyChecker(
                 return@forEach
             }
             bean.foundMatchingConstructor = true
-            bean.dependencies.clear()
-            toUseConstructor.valueParameters.forEach { valueParameter ->
-                val dependency = BeanDependency()
-                bean.dependencies.add(dependency)
-                val nameValue = valueParameter.getAnnotationByClassId(
-                    ClassId.topLevel(FqName(Named::class.qualifiedName!!)),
-                    session
-                )?.getAnnotationFieldValue(Named::value.name)
-                val valueParameterTypeFqn = valueParameter.returnTypeRef.coneType.toString().replace("/", ".")
-                if (nameValue != null) {
-                    val namedBean = beans.find { it.name == nameValue }
-                    if (namedBean == null) {
-                        dependency.errorMessage = "Error injecting beans for ${bean.fqName}, @Named($nameValue) does not exist"
-                    } else if (namedBean.fqName != valueParameterTypeFqn) {
-                        //todo add inheritance check
-                        dependency.errorMessage = "Error injecting beans for ${bean.fqName}, @Named($nameValue) is of wrong type: ${namedBean.fqName} expected: $valueParameterTypeFqn"
-                    } else {
-                        dependency.resolved = true
-                        dependency.dependency = namedBean
-                    }
-                    return@forEach
-                }
+            bean.dependencies = mutableListOf()
 
-                //todo add inheritance check
-                val possibleBeans = beans.filter { it.fqName == valueParameterTypeFqn }
-                if (possibleBeans.isEmpty()) {
-                    dependency.errorMessage = "Error injecting beans for ${bean.fqName}, no beans of type $valueParameterTypeFqn"
-                    return@forEach
-                } else if (possibleBeans.size > 1) {
-                    dependency.errorMessage = "Error injecting beans for ${bean.fqName}, multiple beans of type $valueParameterTypeFqn found, [${
-                        possibleBeans.joinToString(
-                            ", "
-                        ) { it.name }
-                    }] specify which one to use using @Named()"
-                    return@forEach
-                }
-                dependency.resolved = true
-                dependency.dependency = possibleBeans.first()
-            }
-            gradlePluginBeansErrors.addAll(beans.filter { it.source == BeanSource.GRADLE_PLUGIN }.flatMap { it.dependencies }.mapNotNull { it.errorMessage })
+            gradlePluginBeansErrors.addAll(beans.filter { it.source == BeanSource.GRADLE_PLUGIN && it.dependencies != null }.flatMap { it.dependencies!! }.mapNotNull { it.errorMessage })
             if (gradlePluginBeansErrors.isNotEmpty()) {
                 reporter.report(
                     message = gradlePluginBeansErrors.toSet().joinToString("\n"),
                     severity = CompilerMessageSeverity.ERROR
                 )
             }
+        }
+
+        val circularDependencies = findAllCircularDependencies(beans)
+        if (circularDependencies.isNotEmpty()) {
+            reporter.report(
+                message = "Circular Dependencies Detected:\n" + circularDependencies.map { (beanName, cycle) ->
+                    "'$beanName': ${cycle.joinToString(" -> ")}"
+                }.joinToString("\n"),
+                severity = CompilerMessageSeverity.ERROR
+            )
         }
     }
 }
