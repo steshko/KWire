@@ -26,7 +26,7 @@ class KWireCompilerPluginRegistrar: CompilerPluginRegistrar() {
         })
 
         IrGenerationExtension.registerExtension(
-            KWireManagerIrGenerator()
+            KWireManagerIrGenerator(beans)
         )
     }
 }

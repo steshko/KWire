@@ -1,5 +1,6 @@
 package dev.steshko.kwire.ir
 
+import dev.steshko.kwire.beans.BeanConfigInternal
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -8,6 +9,7 @@ import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.primaryConstructor
@@ -34,4 +36,56 @@ internal fun IrClass.addDefaultPrimaryConstructor(
             )
         }
     }
+}
+
+
+internal fun topologicalSortBeans(
+    properties: List<IrProperty>,
+    beans: List<BeanConfigInternal>
+): List<IrProperty> {
+    val propertyMap = properties.associateBy { it.name.asString() }
+
+    // Build dependency graph from BeanConfigInternal.dependencies
+    val dependencies = mutableMapOf<String, Set<String>>()
+
+    beans.forEach { bean ->
+        dependencies[bean.name] = bean.dependencies
+            ?.filter {  it.dependency != null }
+            ?.map { it.dependency!!.name }
+            ?.toSet()
+            ?: emptySet()
+    }
+
+    // Kahn's algorithm for topological sort
+    val inDegree = beans.associate { it.name to 0 }.toMutableMap()
+
+    // Calculate in-degrees
+    dependencies.values.forEach { deps ->
+        deps.forEach { dep ->
+            inDegree[dep] = inDegree[dep]!! + 1
+        }
+    }
+
+    // Queue of beans with no dependencies
+    val queue = ArrayDeque(
+        inDegree.filter { it.value == 0 }.keys
+    )
+
+    // Process queue
+    val sorted = mutableListOf<String>()
+    while (queue.isNotEmpty()) {
+        val current = queue.removeFirst()
+        sorted.add(current)
+
+        // For each bean that current depends on
+        dependencies[current]?.forEach { dependency ->
+            inDegree[dependency] = inDegree[dependency]!! - 1
+            if (inDegree[dependency] == 0) {
+                queue.add(dependency)
+            }
+        }
+    }
+
+    // Return properties in sorted order (dependencies first)
+    return sorted.reversed().mapNotNull { propertyMap[it] }
 }
