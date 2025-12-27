@@ -14,9 +14,12 @@ import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
+import org.jetbrains.kotlin.ir.types.IrType
+import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 internal fun IrClass.addDefaultPrimaryConstructor(
@@ -102,4 +105,10 @@ fun IrDeclarationWithName.getBeanNameFromIrSymbol(): String? {
     }
     val argument = annotation.arguments[0] ?: return defaultName // replace hardcoded 0
     return (argument as IrConst).value?.toString() ?: defaultName
+}
+
+fun String.fqnToIrType(context: IrPluginContext): IrType? {
+    val classId = ClassId.topLevel(FqName(this))
+    val classSymbol = context.referenceClass(classId) ?: return null
+    return classSymbol.defaultType
 }

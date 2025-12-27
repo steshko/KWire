@@ -22,9 +22,12 @@ import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContext
+import org.jetbrains.kotlin.ir.types.IrTypeSystemContextImpl
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.classId
 import org.jetbrains.kotlin.ir.util.getAnnotation
+import org.jetbrains.kotlin.ir.util.isSubtypeOf
 import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
@@ -105,7 +108,11 @@ class KWireManagerIRVisitor(
                                     return@forEachIndexed
                                 }
                                 val dependencyBean = beanDependency.dependency ?: error("Dependency not found for bean ${bean.name}")
-                                if (parameter.type.classFqName.toString() != dependencyBean.fqName) error("Error injecting value parameters for bean: ${bean.name}, dependency bean type mismatch, expected ${parameter.type.classFqName} actual: ${dependencyBean.fqName}")
+                                // Inheritance check
+                                if (dependencyBean.fqName.fqnToIrType(context)?.isSubtypeOf(parameter.type,
+                                        IrTypeSystemContextImpl(irBuiltIns = context.irBuiltIns)) != true) {
+                                    error("Error injecting value parameters for bean: ${bean.name}, dependency bean type mismatch, expected ${parameter.type.classFqName} actual: ${dependencyBean.fqName}")
+                                }
                                 val dependencyProperty = declaration.properties.find {
                                     it.name.toString() == dependencyBean.name
                                 } ?: error("Dependency property not found for bean ${bean.name}")
