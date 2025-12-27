@@ -4,11 +4,11 @@ import dev.steshko.kwire.Inject
 import dev.steshko.kwire.Named
 import dev.steshko.kwire.beans.BeanConfigInternal
 import dev.steshko.kwire.beans.BeanDependency
-import dev.steshko.kwire.util.getAnnotationFieldValue
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
@@ -19,13 +19,13 @@ import org.jetbrains.kotlin.name.FqName
  */
 @OptIn(DirectDeclarationsAccess::class)
 fun getToUseConstructor(firClass: FirClass, session: FirSession): FirConstructor? {
-    val constructorDeclarations = firClass.declarations.filter { declaration ->
+    val functionDeclarations = firClass.declarations.filter { declaration ->
         declaration is FirConstructor
     } as List<FirConstructor>
 
-    return constructorDeclarations.find {
+    return functionDeclarations.find {
         it.getAnnotationByClassId(ClassId.topLevel(FqName(Inject::class.qualifiedName!!)), session) != null
-    } ?: constructorDeclarations.find {
+    } ?: functionDeclarations.find {
         it.valueParameters.isEmpty()
     }
 }
@@ -33,7 +33,7 @@ fun getToUseConstructor(firClass: FirClass, session: FirSession): FirConstructor
  * Returns error message for @Inject constructor
  */
 fun validateConstructor(
-    constructor: FirConstructor,
+    constructor: FirFunction,
     bean: BeanConfigInternal,
     beans: List<BeanConfigInternal>,
     session: FirSession

@@ -1,6 +1,7 @@
 package dev.steshko.kwire
 
 import dev.steshko.kwire.beans.BeanConfigInternal
+import dev.steshko.kwire.beans.BeanCreationMethod
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
@@ -36,7 +37,11 @@ class KWireCommandLineProcessor : CommandLineProcessor {
                 GlobalBeanConfig(
                     beans = Json.decodeFromString<GlobalBeanConfig<BeanConfigUser>>(
                         Base64.decode(value).toString(Charset.defaultCharset())
-                    ).beans.map(BeanConfigInternal::fromUser).toMutableList()
+                    ).beans.map{
+                        BeanConfigInternal.fromUser(it).apply {
+                            beanCreationMethod = BeanCreationMethod.CLASS_CONSTRUCTOR
+                        }
+                    }.toMutableList()
                 )
             )
             else -> error("Unexpected config option: '${option.optionName}'")

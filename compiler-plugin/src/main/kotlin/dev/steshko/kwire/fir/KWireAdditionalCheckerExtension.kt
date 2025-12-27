@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.LanguageVersionSettingsCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.extensions.FirAdditionalCheckersExtension
 
 class KWireAdditionalCheckerExtension(
@@ -20,7 +21,11 @@ class KWireAdditionalCheckerExtension(
 
     override val declarationCheckers = object : DeclarationCheckers() {
         override val classCheckers: Set<FirClassChecker> = setOf(
-            BeanAnnotationChecker(beans)
+            BeanAnnotationClassChecker(beans)
+        )
+
+        override val functionCheckers: Set<FirFunctionChecker> = setOf(
+            BeanAnnotationFunctionChecker(beans)
         )
     }
 }

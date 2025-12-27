@@ -2,7 +2,6 @@ package dev.steshko.kwire.fir
 
 import dev.steshko.kwire.BeanSource
 import dev.steshko.kwire.beans.BeanConfigInternal
-import dev.steshko.kwire.util.getClassSymbolFromFqn
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector
 import org.jetbrains.kotlin.fir.FirSession

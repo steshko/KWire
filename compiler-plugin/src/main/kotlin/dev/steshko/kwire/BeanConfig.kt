@@ -8,14 +8,14 @@ data class GlobalBeanConfig<T : BeanConfig>(
 )
 
 interface BeanConfig {
-    val fqName: String
     val name: String
+    val fqName: String
     val source: BeanSource
 }
 @Serializable
 data class BeanConfigUser(
-    override val fqName: String,
     override val name: String,
+    override val fqName: String,
     override val source: BeanSource
 ) : BeanConfig
 

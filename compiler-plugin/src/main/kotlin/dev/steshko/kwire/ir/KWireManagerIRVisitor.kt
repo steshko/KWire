@@ -3,6 +3,7 @@ package dev.steshko.kwire.ir
 import dev.steshko.kwire.Inject
 import dev.steshko.kwire.KWireDeclarationKey
 import dev.steshko.kwire.beans.BeanConfigInternal
+import dev.steshko.kwire.beans.BeanCreationMethod
 import dev.steshko.kwire.managerClassId
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -10,7 +11,6 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irCall
-import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.createExpressionBody
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
 import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
+import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.classId
@@ -28,7 +29,9 @@ import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.properties
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
+import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.name.Name
 
 class KWireManagerIRVisitor(
     private val beans: List<BeanConfigInternal>,
@@ -64,19 +67,32 @@ class KWireManagerIRVisitor(
                 if (property.origin != GeneratedByPlugin(KWireDeclarationKey)) return@forEach
                 val bean = beans.find { it.name == property.name.toString() } ?: error("Bean not found: ${property.name}")
 
-                val beanReferenceConstructors = context.referenceConstructors(bean.getClassId)
+                val constructorToUse: IrFunctionSymbol = when (bean.beanCreationMethod) {
+                    BeanCreationMethod.CLASS_CONSTRUCTOR -> {
+                        val beanReferenceConstructors = context.referenceConstructors(bean.getClassId)
 
-                val constructorToUse = beanReferenceConstructors.find {
-                    it.owner.getAnnotation(FqName(Inject::class.qualifiedName.toString())) != null
-                } ?: beanReferenceConstructors.find {
-                    it.owner.parameters.isEmpty()
-                } ?: error("Constructor not found for creating bean: ${bean.name}")
+                        beanReferenceConstructors.find {
+                            it.owner.getAnnotation(FqName(Inject::class.qualifiedName.toString())) != null
+                        } ?: beanReferenceConstructors.find {
+                            it.owner.parameters.isEmpty()
+                        } ?: error("Constructor not found for creating bean: ${bean.name}")
+                    }
+                    BeanCreationMethod.TOP_LEVEL_FUNCTION -> {
+                        val originPath = bean.originFqName.split(".")
+                        context.referenceFunctions(CallableId(
+                            FqName(originPath.dropLast(1).joinToString(".")),
+                            className = null,
+                            Name.identifier(originPath.last())
+                        )).first { it.owner.getBeanNameFromIrSymbol() == bean.name }
+                    }
+                    BeanCreationMethod.UNDETERMINED -> error("bean creation method is undetermined")
+                }
+
 
                 property.backingField?.apply {
                     initializer = context.irFactory.createExpressionBody(
-                        expression = declarationBuilder.irCallConstructor(
-                            callee = constructorToUse,
-                            typeArguments = emptyList(),
+                        expression = declarationBuilder.irCall(
+                            callee = constructorToUse
                         ).apply {
                             constructorToUse.owner.parameters.forEachIndexed { index, parameter ->
                                 val beanDependency = bean.dependencies?.getOrNull(index) ?: error("Dependency $index not found for bean ${bean.name}")

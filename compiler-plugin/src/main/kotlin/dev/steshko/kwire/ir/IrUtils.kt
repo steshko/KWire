@@ -1,5 +1,6 @@
 package dev.steshko.kwire.ir
 
+import dev.steshko.kwire.Bean
 import dev.steshko.kwire.beans.BeanConfigInternal
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
@@ -9,10 +10,14 @@ import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irDelegatingConstructorCall
 import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithName
 import org.jetbrains.kotlin.ir.declarations.IrProperty
+import org.jetbrains.kotlin.ir.expressions.IrConst
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.util.defaultType
+import org.jetbrains.kotlin.ir.util.getAnnotation
 import org.jetbrains.kotlin.ir.util.primaryConstructor
+import org.jetbrains.kotlin.name.FqName
 
 internal fun IrClass.addDefaultPrimaryConstructor(
     context: IrPluginContext,
@@ -88,4 +93,13 @@ internal fun topologicalSortBeans(
 
     // Return properties in sorted order (dependencies first)
     return sorted.reversed().mapNotNull { propertyMap[it] }
+}
+
+fun IrDeclarationWithName.getBeanNameFromIrSymbol(): String? {
+    val annotation = this.getAnnotation(FqName(Bean::class.qualifiedName!!)) ?: return null
+    val defaultName by lazy {
+        this.name.asString().replaceFirstChar { it.lowercase() }
+    }
+    val argument = annotation.arguments[0] ?: return defaultName // replace hardcoded 0
+    return (argument as IrConst).value?.toString() ?: defaultName
 }
