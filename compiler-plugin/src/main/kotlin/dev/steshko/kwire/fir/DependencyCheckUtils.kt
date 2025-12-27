@@ -46,10 +46,15 @@ fun validateConstructor(
             ClassId.topLevel(FqName(Named::class.qualifiedName!!)),
             session
         )?.getAnnotationFieldValue(Named::value.name)
-        val valueParameterTypeFqn = valueParameter.returnTypeRef.coneType.toString().replace("/", ".")
+        var valueParameterTypeFqn = valueParameter.returnTypeRef.coneType.toString().replace("/", ".")
+        if (valueParameterTypeFqn.endsWith("?")) {
+            dependency.nullable = true
+            valueParameterTypeFqn = valueParameterTypeFqn.dropLast(1)
+        }
         if (nameValue != null) {
             val namedBean = beans.find { it.name == nameValue }
             if (namedBean == null) {
+                if (dependency.nullable) return@forEach
                 dependency.errorMessage = "Error injecting beans for ${bean.fqName}, no beans with name '$nameValue' found"
             } else if (namedBean.fqName != valueParameterTypeFqn) {
                 //todo add inheritance check
@@ -64,6 +69,7 @@ fun validateConstructor(
         //todo add inheritance check
         val possibleBeans = beans.filter { it.fqName == valueParameterTypeFqn }
         if (possibleBeans.isEmpty()) {
+            if (dependency.nullable) return@forEach
             dependency.errorMessage = "Error injecting beans for ${bean.fqName}, no beans of type $valueParameterTypeFqn"
             return@forEach
         } else if (possibleBeans.size > 1) {

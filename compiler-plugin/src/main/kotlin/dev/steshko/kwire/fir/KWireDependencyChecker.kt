@@ -46,7 +46,7 @@ class KWireDependencyChecker(
             it.isNotEmpty()
         }?.run {
             reporter.report(
-                message = "Missing dependencies for kwire beans [${joinToString()}]${System.lineSeparator()} Check build.gradle and kotlin compiler arguments",
+                message = "Missing dependencies for kwire beans [${joinToString { it.name }}]${System.lineSeparator()} Check build.gradle and kotlin compiler arguments",
                 severity = CompilerMessageSeverity.ERROR
             )
         }

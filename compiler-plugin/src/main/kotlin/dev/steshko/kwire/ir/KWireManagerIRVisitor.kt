@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.irCall
 import org.jetbrains.kotlin.ir.builders.irCallConstructor
 import org.jetbrains.kotlin.ir.builders.irGet
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.createExpressionBody
 import org.jetbrains.kotlin.ir.expressions.IrStatementOrigin
+import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.types.classFqName
 import org.jetbrains.kotlin.ir.util.classId
@@ -77,7 +79,16 @@ class KWireManagerIRVisitor(
                             typeArguments = emptyList(),
                         ).apply {
                             constructorToUse.owner.parameters.forEachIndexed { index, parameter ->
-                                val dependencyBean = bean.dependencies?.getOrNull(index)?.dependency ?: error("Dependency $index not found for bean ${bean.name}")
+                                val beanDependency = bean.dependencies?.getOrNull(index) ?: error("Dependency $index not found for bean ${bean.name}")
+                                if (beanDependency.nullable && beanDependency.dependency == null) {
+                                    arguments[index] = IrConstImpl.constNull(
+                                        startOffset = UNDEFINED_OFFSET,
+                                        endOffset = UNDEFINED_OFFSET,
+                                        type = context.irBuiltIns.nothingNType
+                                    )
+                                    return@forEachIndexed
+                                }
+                                val dependencyBean = beanDependency.dependency ?: error("Dependency not found for bean ${bean.name}")
                                 if (parameter.type.classFqName.toString() != dependencyBean.fqName) error("Error injecting value parameters for bean: ${bean.name}, dependency bean type mismatch, expected ${parameter.type.classFqName} actual: ${dependencyBean.fqName}")
                                 val dependencyProperty = declaration.properties.find {
                                     it.name.toString() == dependencyBean.name

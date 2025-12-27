@@ -36,6 +36,7 @@ class BeanConfigInternal(
 
 class BeanDependency {
     var resolved: Boolean = false
+    var nullable: Boolean = false
     var dependency: BeanConfigInternal? = null
     var errorMessage: String? = null
 }
