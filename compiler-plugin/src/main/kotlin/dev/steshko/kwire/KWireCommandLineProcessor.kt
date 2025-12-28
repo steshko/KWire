@@ -2,6 +2,7 @@ package dev.steshko.kwire
 
 import dev.steshko.kwire.beans.BeanConfigInternal
 import dev.steshko.kwire.beans.BeanCreationMethod
+import dev.steshko.kwire.beans.GlobalBeanConfigInternal
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.compiler.plugin.AbstractCliOption
 import org.jetbrains.kotlin.compiler.plugin.CliOption
@@ -16,7 +17,7 @@ class KWireCommandLineProcessor : CommandLineProcessor {
 
     companion object {
         const val BEANS_OPTION = "beans"
-        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<GlobalBeanConfig<BeanConfigInternal>>("registered beans")
+        val BEANS_CONFIGURATION_KEY = CompilerConfigurationKey<GlobalBeanConfigInternal>("registered beans")
     }
 
     override val pluginId: String = BuildConfig.KOTLIN_COMPILER_PLUGIN_ID
@@ -34,7 +35,7 @@ class KWireCommandLineProcessor : CommandLineProcessor {
         when (option.optionName) {
             BEANS_OPTION -> configuration.put(
                 BEANS_CONFIGURATION_KEY,
-                GlobalBeanConfig(
+                GlobalBeanConfigInternal(
                     beans = Json.decodeFromString<GlobalBeanConfig<BeanConfigUser>>(
                         Base64.decode(value).toString(Charset.defaultCharset())
                     ).beans.map{

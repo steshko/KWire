@@ -1,7 +1,7 @@
 package dev.steshko.kwire.fir
 
 import dev.steshko.kwire.BeanSource
-import dev.steshko.kwire.beans.BeanConfigInternal
+import dev.steshko.kwire.beans.GlobalBeanConfigInternal
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import org.jetbrains.kotlin.diagnostics.impl.BaseDiagnosticsCollector
 import org.jetbrains.kotlin.fir.FirSession
@@ -14,7 +14,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 
 class KWireDependencyChecker(
     private val session: FirSession,
-    private val beans: List<BeanConfigInternal>
+    private val globalBeanConfig: GlobalBeanConfigInternal
 ) : FirLanguageVersionSettingsChecker() {
     @OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
     override fun check(
@@ -23,7 +23,7 @@ class KWireDependencyChecker(
     ) {
 
         // Check that gradle plugin defined beans have unique names
-        beans.filter {
+        globalBeanConfig.beans.filter {
             it.source == BeanSource.GRADLE_PLUGIN
         }.groupBy {
             it.name
@@ -39,7 +39,7 @@ class KWireDependencyChecker(
         }
 
         // Check for beans that don't exist
-        beans.filter {
+        globalBeanConfig.beans.filter {
             it.source == BeanSource.GRADLE_PLUGIN && context.session.getClassSymbolFromFqn(it.fqName) == null
         }.takeIf {
             it.isNotEmpty()
@@ -52,7 +52,7 @@ class KWireDependencyChecker(
 
         // Check for no arg or @Inject constructors
         val gradlePluginBeansErrors = mutableListOf<String>()
-        beans.filter {
+        globalBeanConfig.beans.filter {
             !it.foundMatchingConstructor
         }.forEach { bean ->
             val classSymbol: FirClassLikeSymbol<*> = context.session.getClassSymbolFromFqn(bean.fqName) ?: return@forEach
@@ -67,7 +67,7 @@ class KWireDependencyChecker(
             bean.foundMatchingConstructor = true
             bean.dependencies = mutableListOf()
 
-            gradlePluginBeansErrors.addAll(beans.filter { it.source == BeanSource.GRADLE_PLUGIN && it.dependencies != null }.flatMap { it.dependencies!! }.mapNotNull { it.errorMessage })
+            gradlePluginBeansErrors.addAll(globalBeanConfig.beans.filter { it.source == BeanSource.GRADLE_PLUGIN && it.dependencies != null }.flatMap { it.dependencies!! }.mapNotNull { it.errorMessage })
             if (gradlePluginBeansErrors.isNotEmpty()) {
                 reporter.report(
                     message = gradlePluginBeansErrors.toSet().joinToString("\n"),
@@ -76,7 +76,7 @@ class KWireDependencyChecker(
             }
         }
 
-        val circularDependencies = findAllCircularDependencies(beans)
+        val circularDependencies = findAllCircularDependencies(globalBeanConfig.beans)
         if (circularDependencies.isNotEmpty()) {
             reporter.report(
                 message = "Circular Dependencies Detected:\n" + circularDependencies.map { (beanName, cycle) ->
@@ -85,5 +85,6 @@ class KWireDependencyChecker(
                 severity = CompilerMessageSeverity.ERROR
             )
         }
+        globalBeanConfig.generatedBeanDependencies = true
     }
 }

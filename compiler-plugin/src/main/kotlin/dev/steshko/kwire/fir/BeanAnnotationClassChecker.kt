@@ -1,7 +1,7 @@
 package dev.steshko.kwire.fir
 
 import dev.steshko.kwire.Bean
-import dev.steshko.kwire.beans.BeanConfigInternal
+import dev.steshko.kwire.beans.GlobalBeanConfigInternal
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -17,32 +17,36 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
 class BeanAnnotationClassChecker(
-    private val beans: List<BeanConfigInternal>
+    private val globalBeanConfig: GlobalBeanConfigInternal
 ) : FirClassChecker(MppCheckerKind.Common) {
     @OptIn(DirectDeclarationsAccess::class)
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirClass) {
-        check(declaration, beans)
+        check(declaration, globalBeanConfig)
     }
 }
 
 class BeanAnnotationFunctionChecker(
-    private val beans: List<BeanConfigInternal>
+    private val globalBeanConfig: GlobalBeanConfigInternal
 ) : FirFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirFunction) {
-        check(declaration, beans)
+        check(declaration, globalBeanConfig)
     }
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
-fun check(declaration: FirDeclaration, beans: List<BeanConfigInternal>) {
+fun check(declaration: FirDeclaration, globalBeanConfig: GlobalBeanConfigInternal) {
     val beanAnnotation = declaration.getAnnotationByClassId(
         ClassId.topLevel(FqName(Bean::class.qualifiedName!!)),
         context.session
     )
     beanAnnotation ?: return
 
+    val beans = when (globalBeanConfig.generatedBeans) {
+        true -> globalBeanConfig.beans
+        false -> globalBeanConfig.generateBeans(context.session)
+    }
     val beanName = beanAnnotation.getAnnotationFieldValue(Bean::name.name) ?: getDefaultBeanName(declaration.symbol)
     val sameNamedBeans = beans.filter { it.name == beanName }
     val bean = when {
